@@ -10,10 +10,11 @@ Es un plugin **independiente** del resto de la suite Axxon (`axxon-dataverse-arc
 - **Consecuencia directa**: en este harness no existen Topics determinísticos, variables globales/de Topic, Power Fx, ni **Adaptive Cards** (confirmado contra la documentación oficial — Adaptive Cards es una feature exclusiva del standard harness). Todo requerimiento se clasifica en cuatro cajones: **Instructions / Knowledge / Tools / Skills**.
 - **Generación de YAML propia, no delegada.** Evaluamos depender de **`mcs-assistant`** (repo [`microsoft/copilot-studio-plugin`](https://github.com/microsoft/copilot-studio-plugin)), el toolkit experimental del equipo Microsoft Copilot Studio CAT para este harness, pero **su único flujo (`/migrate`) es de migración de un agente clásico existente al modelo nuevo** — no cubre construcción desde cero, que es nuestro caso de uso principal. Decisión: las skills de este plugin generan el YAML directamente, adaptando (con crédito, sin copiar literal) la metodología de clasificación de `copilot-studio-architect.md` de ese repo — el árbol de decisión Instructions/Knowledge/Tools/Skills y el schema de carpetas (`settings.mcs.yml`, `capabilities/knowledge/`, `capabilities/tools/`, `behaviors/`). La sincronización con Dataverse sigue siendo vía `pac copilot init/clone/pull/push`, que es independiente de `mcs-assistant`.
 - **`mcs-assistant` queda como dependencia opcional futura**, solo para el día en que un cliente pida migrar un bot clásico existente (fuera del alcance actual de este plugin).
-- **Publisher prefix: `axx`** (convención Axxon, fijo — nunca `axxon` ni `new`), usado por `behavior-spec-writer` al inicializar el workspace con `pac copilot init`.
+- **Publisher prefix: `axx`** (convención Axxon, fijo — nunca `axxon` ni `new`), usado por `behavior-spec-writer` al inicializar el workspace con `pac copilot init`, y por `agent-alm` al empaquetar con `pac copilot pack`.
 - **Gap de investigación abierto**: el schema YAML exacto para representar servidores MCP y conectores IQ (Foundry IQ, Fabric IQ, Work IQ) en un workspace CLI-authored todavía no está confirmado — `tools-and-connectors-catalog` documenta el requerimiento pero no genera ese YAML hasta verificarlo contra un `pac copilot clone` real.
+- **Configuración de canales (Teams, Web, Omnichannel/D365 Contact Center)**: no encontramos comando `pac copilot` equivalente — `publish-and-channels` la trata como paso manual en el portal hasta que se confirme un mecanismo CLI/API.
 
-## Catálogo de skills
+## Catálogo de skills — completo (v1.0.0)
 
 | # | Skill | Alcance |
 |---|-------|---------|
@@ -23,10 +24,10 @@ Es un plugin **independiente** del resto de la suite Axxon (`axxon-dataverse-arc
 | 3 | `knowledge-source-catalog` | Releva SharePoint/Dataverse/archivos con clasificación de sensibilidad FSI y escribe los YAML bajo `capabilities/knowledge/`. |
 | 4 | `tools-and-connectors-catalog` | Junta con el cliente los datos concretos (connector ID, operation ID, auth mode) y escribe los YAML bajo `capabilities/tools/` — conectores estándar/custom, Power Automate/Agent Flows. MCP e IQ connectors quedan documentados como gap abierto (ver arriba). |
 | 5 | `skill-procedure-designer` | Escribe las Skills (InlineAgentSkill) para los casos de uso que son procedimiento reusable, referenciando las Tools ya creadas — bajo `behaviors/`. |
-| 6 | `publish-and-channels` | Teams, Web, Omnichannel/D365 Contact Center, autenticación Entra ID — vía `pac copilot push` + publicación de canal. *(pendiente)* |
-| 7 | `agent-alm` | Versionado de solución, promoción DEV→TEST→PROD con gate de aprobación, sobre `settings.mcs.yml`/`capabilities/`/`.mcs/`. *(pendiente)* |
+| 6 | `publish-and-channels` | Sincroniza con `pac copilot push`, publica con `pac copilot publish`, y guía la configuración de canales (paso manual, ver gap arriba). |
+| 7 | `agent-alm` | Empaqueta con `pac copilot pack` y promueve DEV→TEST→PROD con `pac solution import`, siempre con confirmación explícita del usuario por promoción — nunca automático. |
 
-Las skills 3, 4 y 5 no dependen entre sí — solo de que `behavior-spec-writer` haya corrido antes. Pueden invocarse en cualquier orden.
+Las skills 3, 4 y 5 no dependen entre sí — solo de que `behavior-spec-writer` haya corrido antes. Pueden invocarse en cualquier orden. El resto del ciclo (0→1→2→{3,4,5}→6→7) sí es secuencial en la práctica, aunque `csb-orchestrator` permite volver atrás si aparece un caso de uso nuevo a mitad de camino.
 
 ## Convenciones
 
@@ -35,3 +36,7 @@ Las skills 3, 4 y 5 no dependen entre sí — solo de que `behavior-spec-writer`
 - Ninguna skill downstream trabaja sin que `agent-intake` haya pasado el gate estructural mínimo (ver `skills/agent-intake/SKILL.md`).
 - Convención de nombres de componentes `.mcs.yml`: slug del nombre + sufijo corto único (ej. `politica-reembolsos_a1b2c3.mcs.yml`); al editar un componente existente, se conserva el sufijo generado.
 - El deploy DEV→TEST→PROD (`agent-alm`) sigue el mismo principio de gate de aprobación humana que `solution-packager` en `axxon-dataverse-architect` — nunca automático.
+
+## Próximo paso
+
+Correr un caso de prueba de punta a punta (intake → behavior-spec-writer → catálogos → publish → ALM) antes de redactar las instrucciones del proyecto Cowork correspondiente.
