@@ -12,7 +12,7 @@
       "name": "axxon-copilot-studio-builder",
       "source": "./",
       "strict": false,
-      "description": "Plugin de Axxon Consulting para el ciclo completo de construcción de Agentes en Microsoft Copilot Studio: intake, Topics, Knowledge, Tools/MCP/IQ, Agent Flows, Adaptive Cards, publicación en canales, y ALM."
+      "description": "Plugin de Axxon Consulting para el ciclo completo de construcción de Agentes en Microsoft Copilot Studio sobre el GitHub Copilot harness: intake, especificación de comportamiento, Knowledge, Tools/MCP/IQ, Skills, publicación en canales, y ALM. Depende de mcs-assistant (microsoft/copilot-studio-plugin)."
     }
   ]
 }

@@ -1,24 +1,36 @@
 ---
 name: agent-intake
 description: >
-  Levanta el contexto inicial para construir un Agente en Microsoft Copilot Studio: objetivo,
-  audiencia, canal de publicación destino, environment/harness, y casos de uso funcionales a
-  partir de cualquier tipo de archivo de referencia (RFP, notas de reunión, transcripciones de
-  Teams, documentos de definición funcional, matrices de casos de uso en Excel/CSV, PDFs).
-  Genera el archivo de contexto .cs-project.md que todas las demás skills del plugin Axxon
-  Copilot Studio Builder (topic-designer, knowledge-connector, tools-and-connectors-builder,
-  agent-flow-designer, adaptive-card-builder, publish-and-channels, agent-alm) requieren como
-  precondición. Usar SIEMPRE al arrancar el diseño de un agente nuevo, cuando el usuario diga
-  "quiero construir un agente para X", "arranquemos un Copilot Studio nuevo", adjunte
-  documentación funcional o casos de uso, o cuando cualquier otra skill de este plugin detecte
-  que falta el archivo .cs-project.md.
+  Levanta el contexto inicial para construir un Agente en Microsoft Copilot Studio sobre el
+  GitHub Copilot harness: objetivo, audiencia, canal de publicación destino, environment, y
+  casos de uso funcionales a partir de cualquier tipo de archivo de referencia (RFP, notas de
+  reunión, transcripciones de Teams, documentos de definición funcional, matrices de casos de
+  uso en Excel/CSV, PDFs). Genera el archivo de contexto .cs-project.md que todas las demás
+  skills del plugin Axxon Copilot Studio Builder (behavior-spec-writer, knowledge-source-catalog,
+  tools-and-connectors-catalog, skill-procedure-designer, publish-and-channels, agent-alm)
+  requieren como precondición. Usar SIEMPRE al arrancar el diseño de un agente nuevo, cuando el
+  usuario diga "quiero construir un agente para X", "arranquemos un Copilot Studio nuevo",
+  adjunte documentación funcional o casos de uso, o cuando cualquier otra skill de este plugin
+  detecte que falta el archivo .cs-project.md.
 ---
 
 # Agent Intake
 
 Primera skill del ciclo de construcción. Su único objetivo es producir un contexto
 estructurado y verificado — nunca inventado — que sirva de fundación para todo lo que sigue:
-Topics, Knowledge, Tools/MCP/IQ, Agent Flows, Adaptive Cards, publicación y ALM.
+especificación de comportamiento, Knowledge, Tools/MCP/IQ, Skills, publicación y ALM.
+
+## Decisión de arquitectura — harness fijo
+
+Este plugin targetea exclusivamente el **GitHub Copilot harness** (modelo agentic-loop), no el
+standard harness clásico de Topics. Es una decisión ya tomada a nivel de plugin, no algo que
+se pregunte por agente — en la sección `Agente` de `.cs-project.md` el campo Harness se
+completa directo como `GitHub Copilot`, sin preguntarlo. Motivo (documentado para que quien
+lea el archivo después entienda el porqué): es el harness donde Microsoft invierte el tooling
+nuevo (`pac copilot`, Foundry IQ, Fabric IQ, Work IQ, `mcs-assistant`), a cambio de perder
+Topics determinísticos, variables y Adaptive Cards. Si en algún momento un caso de cliente
+necesita explícitamente esas features del standard harness, avisale al usuario que está fuera
+del alcance de este plugin tal como está diseñado hoy — no lo fuerces.
 
 ## Paso 0 — Gate obligatorio
 
@@ -31,8 +43,8 @@ de forma determinística con `scripts/validate_cs_project.py`, no a ojo — dos 
    siempre corresponde derivar a `agent-intake`.
 2. **Completitud de campos específicos**: cada skill downstream declara con
    `--require "Nombre de sección"` qué secciones necesita con contenido real (no `(pendiente)`)
-   para poder trabajar. Ej.: `topic-designer` exige `--require "Casos de uso relevados"`;
-   `tools-and-connectors-builder` exige `--require "Restricciones conocidas"`.
+   para poder trabajar. Ej.: `behavior-spec-writer` exige `--require "Casos de uso relevados"`;
+   `tools-and-connectors-catalog` exige `--require "Restricciones conocidas"`.
 
 ```bash
 python skills/agent-intake/scripts/validate_cs_project.py .cs-project.md --require "<sección>"
@@ -94,22 +106,25 @@ siguientes.
 
 ## Qué información se levanta
 
-1. **Agente**: nombre de trabajo, environment de Dataverse destino, harness (Standard /
-   GitHub Copilot — importa porque Foundry IQ y Fabric IQ solo están disponibles en harness
-   GitHub Copilot), idioma principal, canal(es) de publicación destino.
+1. **Agente**: nombre de trabajo, environment de Dataverse destino, harness (`GitHub Copilot`,
+   fijo — ver Decisión de arquitectura arriba), idioma principal, canal(es) de publicación
+   destino.
 2. **Objetivo y audiencia**: qué resuelve el agente, para quién, en lenguaje del negocio — no
-   lo traduzcas todavía a Topics (eso lo hace `topic-designer`).
+   lo traduzcas todavía a Instructions/Knowledge/Tools/Skills (eso lo hacen las etapas
+   siguientes junto con `copilot-studio-architect`).
 3. **Fuentes de referencia**: tabla con cada archivo/fuente usado, tipo, resumen de qué aportó,
-   y fecha — para que `topic-designer` pueda trazar de qué caso de uso salió cada Topic.
-4. **Casos de uso relevados**: uno por fila, con la fuente de donde salió y un Topic candidato
-   tentativo (sin comprometerse al diseño final).
+   y fecha — para que `behavior-spec-writer` pueda trazar de qué caso de uso salió cada
+   componente del agente.
+4. **Casos de uso relevados**: uno por fila, con la fuente de donde salió y un componente
+   candidato tentativo (Instruction / Knowledge / Tool / Skill — sin comprometerse al diseño
+   final, esa clasificación definitiva la hace `copilot-studio-architect`).
 5. **Restricciones conocidas**, categorizadas — igual que en otras skills de Axxon, no como
-   lista plana, porque `tools-and-connectors-builder` y `publish-and-channels` filtran sobre
+   lista plana, porque `tools-and-connectors-catalog` y `publish-and-channels` filtran sobre
    esto después:
    - **Seguridad / Autenticación**: requisitos de Entra ID, on-behalf-of, roles.
    - **Compliance / Regulatorio**: marcos aplicables (ej. BCRA/UIF si es FSI Argentina).
-   - **Técnicas / Plataforma**: licenciamiento de Copilot Credits, límites de canal, sistemas
-     legacy a integrar.
+   - **Técnicas / Plataforma**: Copilot Credits (este harness factura por créditos, no por el
+     modelo de capacidad del standard harness), límites de canal, sistemas legacy a integrar.
    Si una categoría fue relevada y no hay restricciones, marcá `(ninguna identificada)` — es
    un dato confirmado, distinto de `(pendiente)` que significa "todavía no se preguntó".
 6. **Estado**: fase actual del ciclo (arranca en "Intake") y fecha de última actualización.
@@ -131,7 +146,7 @@ siguientes.
 ## Agente
 - Nombre:
 - Environment (Dataverse):
-- Harness (Standard / GitHub Copilot):
+- Harness: GitHub Copilot
 - Idioma principal:
 - Canal(es) de publicación destino:
 
@@ -143,7 +158,7 @@ siguientes.
 |---|---|---|---|
 
 ## Casos de uso relevados
-| Caso de uso | Fuente | Topic candidato | Estado |
+| Caso de uso | Fuente | Componente candidato (Instruction/Knowledge/Tool/Skill) | Estado |
 |---|---|---|---|
 
 ## Restricciones conocidas
@@ -171,5 +186,6 @@ cerrarlas.
 
 ## Al finalizar
 
-Decile al usuario explícitamente qué sigue: normalmente `topic-designer`, para convertir los
-casos de uso relevados en Topics candidatos con trigger phrases y conversation nodes.
+Decile al usuario explícitamente qué sigue: normalmente `behavior-spec-writer`, para convertir
+los casos de uso relevados en la especificación de comportamiento detallada que
+`copilot-studio-architect` (de `mcs-assistant`) necesita como input.
