@@ -1,0 +1,18 @@
+{
+  "name": "axxon-copilot-studio-builder-marketplace",
+  "owner": {
+    "name": "Axxon Consulting"
+  },
+  "metadata": {
+    "description": "Marketplace del plugin Axxon Copilot Studio Builder",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "axxon-copilot-studio-builder",
+      "source": "./",
+      "strict": false,
+      "description": "Plugin de Axxon Consulting para el ciclo completo de construcción de Agentes en Microsoft Copilot Studio: intake, Topics, Knowledge, Tools/MCP/IQ, Agent Flows, Adaptive Cards, publicación en canales, y ALM."
+    }
+  ]
+}
