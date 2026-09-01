@@ -6,11 +6,10 @@ description: >
   especificación de comportamiento, catálogo de Knowledge sources, catálogo de Tools/MCP/IQ,
   diseño de Skills, publicación en canales, y ALM. Identifica en qué etapa del ciclo está el
   pedido del usuario y delega a la skill correspondiente, manteniendo el archivo de contexto
-  .cs-project.md y verificando que el plugin mcs-assistant (microsoft/copilot-studio-plugin)
-  esté disponible antes de delegar a etapas que generan YAML. Usar esta skill como punto de
-  entrada cuando no es evidente qué etapa corresponde, cuando el pedido cruza más de una
-  etapa, o al iniciar un chat nuevo sobre un agente de Copilot Studio. Si ya es evidente la
-  etapa, invocar directo la skill correspondiente sin pasar por acá.
+  .cs-project.md. Usar esta skill como punto de entrada cuando no es evidente qué etapa
+  corresponde, cuando el pedido cruza más de una etapa, o al iniciar un chat nuevo sobre un
+  agente de Copilot Studio. Si ya es evidente la etapa, invocar directo la skill
+  correspondiente sin pasar por acá.
 ---
 
 # CSB Orchestrator — Axxon Copilot Studio Builder
@@ -31,23 +30,18 @@ respetar:
 - No hay Topics determinísticos, variables globales/de Topic, Power Fx, ni Adaptive Cards —
   esas features pertenecen al standard harness, no a este.
 - Todo requerimiento se clasifica en cuatro cajones: **Instructions / Knowledge / Tools /
-  Skills**. La lógica de esa clasificación no la reimplementamos — la aporta el agente
-  `copilot-studio-architect` del plugin **mcs-assistant** (`microsoft/copilot-studio-plugin`).
-
-## Prerequisito — `mcs-assistant`
-
-Antes de delegar a cualquier etapa 2-6 (las que terminan generando o editando YAML del
-agente), verificá que el plugin `mcs-assistant` esté instalado en la sesión. Si no lo está,
-avisá explícitamente y sugerile al usuario:
-
-```
-/plugin marketplace add microsoft/copilot-studio-plugin
-/plugin install mcs-assistant@copilot-studio-plugin
-```
-
-No improvises YAML vos mismo como sustituto — el schema es propiedad de `mcs-assistant` y
-puede cambiar sin aviso (es un toolkit experimental); generarlo a mano acumula deuda técnica
-que después no sincroniza con el `pac copilot pull`/`push` real.
+  Skills**.
+- **Generamos el YAML nosotros mismos**, no delegamos en un plugin externo. Evaluamos
+  `mcs-assistant` (`microsoft/copilot-studio-plugin`) pero su único flujo es de migración de
+  un agente clásico existente, no de construcción desde cero — no aplica a nuestro caso de
+  uso principal. Cada skill de las etapas 2-5 adapta (con crédito, no copia literal) la
+  metodología de clasificación de `copilot-studio-architect.md` de ese repo, y escribe el
+  YAML directo bajo el schema `settings.mcs.yml` / `capabilities/knowledge/` /
+  `capabilities/tools/` / `behaviors/`.
+- `mcs-assistant` queda como dependencia **opcional futura**, solo relevante si en algún
+  momento un cliente pide migrar un bot clásico existente al modelo nuevo — eso sería una
+  skill aparte (`agent-migration`, no construida aún), no parte del flujo estándar de este
+  plugin.
 
 ---
 
@@ -56,11 +50,11 @@ que después no sincroniza con el `pac copilot pull`/`push` real.
 | Etapa | Skill | Cuándo invocarla |
 |---|---|---|
 | 1 · Intake | `agent-intake` | Objetivo, audiencia, canal destino, casos de uso, fuentes de referencia. Precondición de todo lo demás. |
-| 2 · Especificación de comportamiento | `behavior-spec-writer` | Arma la "detailed behavior description" que `copilot-studio-architect` exige como input obligatorio — no genera YAML. |
-| 3 · Knowledge | `knowledge-source-catalog` | Releva fuentes de conocimiento (SharePoint, Dataverse, archivos) para que el architect decida Knowledge vs. Tool+Skill. |
-| 4 · Tools | `tools-and-connectors-catalog` | Junta los datos concretos de conectores/MCP/IQ que el architect necesita completos — nunca inventa connector ID u operation ID. |
-| 5 · Skills | `skill-procedure-designer` | Identifica qué casos de uso son procedimiento reusable vs. instrucción global vs. tool call directo. |
-| 6 · Publicación | `publish-and-channels` | Teams, Web, Omnichannel/D365 Contact Center, auth Entra ID — vía `copilot-studio-manage`. |
+| 2 · Especificación de comportamiento | `behavior-spec-writer` | Clasifica cada caso de uso en Instruction/Knowledge/Tool/Skill y escribe `settings.mcs.yml`. |
+| 3 · Knowledge | `knowledge-source-catalog` | Releva fuentes de conocimiento y escribe los YAML bajo `capabilities/knowledge/`. |
+| 4 · Tools | `tools-and-connectors-catalog` | Junta los datos concretos de conectores/MCP/IQ y escribe los YAML bajo `capabilities/tools/` — nunca inventa connector ID u operation ID. |
+| 5 · Skills | `skill-procedure-designer` | Identifica qué casos de uso son procedimiento reusable vs. instrucción global vs. tool call directo, y escribe los YAML bajo `behaviors/`. |
+| 6 · Publicación | `publish-and-channels` | Teams, Web, Omnichannel/D365 Contact Center, auth Entra ID — vía `pac copilot push` + publicación de canal. |
 | 7 · ALM | `agent-alm` | Versionado y promoción DEV→TEST→PROD sobre la estructura de archivos `.mcs`. |
 
 Estas etapas no son estrictamente lineales — es normal volver a `behavior-spec-writer` después
@@ -95,8 +89,7 @@ El formato completo de `.cs-project.md` y las secciones requeridas están docume
   "conectá un servidor MCP", "publicá en Teams") → la skill correspondiente ya se activa sola
   por su propia `description`; no hace falta que actúes de intermediario.
 - **Pedido ambiguo, que cruza etapas, o inicio de chat sin contexto previo** → coordinás vos:
-  corré el gate, verificá `mcs-assistant` si la etapa lo requiere, identificá la etapa real, y
-  delegá.
+  corré el gate, identificá la etapa real, y delegá.
 
 ## Identidad y tono
 
@@ -109,8 +102,8 @@ la etapa, nombrá la skill, y dejá que esa skill haga el trabajo real.
 - No inventés contenido de una skill si todavía no está implementada en el plugin (ver estado
   `(pendiente)` en el README) — avisá explícitamente que esa etapa está planeada pero no
   construida aún, en vez de improvisar la respuesta.
-- No inventés YAML de agente si `mcs-assistant` no está instalado — avisá y sugerile al
-  usuario instalarlo (ver Prerequisito arriba).
+- No sugieras `mcs-assistant` para construir un agente desde cero — ese plugin es solo para
+  migración de agentes clásicos existentes, no aplica a este flujo.
 - No dupliques acá las restricciones específicas de cada skill (ej. qué datos de conector son
   obligatorios en `tools-and-connectors-catalog`, o el gate de aprobación de `agent-alm`) —
   cada una las trae en su propio SKILL.md.

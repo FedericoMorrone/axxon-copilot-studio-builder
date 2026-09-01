@@ -20,17 +20,23 @@ Primera skill del ciclo de construcción. Su único objetivo es producir un cont
 estructurado y verificado — nunca inventado — que sirva de fundación para todo lo que sigue:
 especificación de comportamiento, Knowledge, Tools/MCP/IQ, Skills, publicación y ALM.
 
-## Decisión de arquitectura — harness fijo
+## Decisión de arquitectura — harness fijo y generación propia de YAML
 
 Este plugin targetea exclusivamente el **GitHub Copilot harness** (modelo agentic-loop), no el
 standard harness clásico de Topics. Es una decisión ya tomada a nivel de plugin, no algo que
 se pregunte por agente — en la sección `Agente` de `.cs-project.md` el campo Harness se
-completa directo como `GitHub Copilot`, sin preguntarlo. Motivo (documentado para que quien
-lea el archivo después entienda el porqué): es el harness donde Microsoft invierte el tooling
-nuevo (`pac copilot`, Foundry IQ, Fabric IQ, Work IQ, `mcs-assistant`), a cambio de perder
-Topics determinísticos, variables y Adaptive Cards. Si en algún momento un caso de cliente
-necesita explícitamente esas features del standard harness, avisale al usuario que está fuera
-del alcance de este plugin tal como está diseñado hoy — no lo fuerces.
+completa directo como `GitHub Copilot`, sin preguntarlo. Motivo: es el harness donde Microsoft
+invierte el tooling nuevo (`pac copilot`, Foundry IQ, Fabric IQ, Work IQ), a cambio de perder
+Topics determinísticos, variables y Adaptive Cards.
+
+Además, este plugin **genera el YAML del agente directamente** — se evaluó depender de
+`mcs-assistant` (`microsoft/copilot-studio-plugin`), pero ese toolkit solo cubre **migración**
+de un agente clásico existente, no construcción desde cero. Las skills de este plugin adaptan
+(con crédito, no copia literal) la metodología de clasificación de su `copilot-studio-
+architect.md` como referencia de diseño. Si en algún momento un caso de cliente necesita
+explícitamente features del standard harness (Topics determinísticos, Adaptive Cards), avisale
+al usuario que está fuera del alcance de este plugin tal como está diseñado hoy — no lo
+fuerces.
 
 ## Paso 0 — Gate obligatorio
 
@@ -111,13 +117,13 @@ siguientes.
    destino.
 2. **Objetivo y audiencia**: qué resuelve el agente, para quién, en lenguaje del negocio — no
    lo traduzcas todavía a Instructions/Knowledge/Tools/Skills (eso lo hacen las etapas
-   siguientes junto con `copilot-studio-architect`).
+   siguientes).
 3. **Fuentes de referencia**: tabla con cada archivo/fuente usado, tipo, resumen de qué aportó,
    y fecha — para que `behavior-spec-writer` pueda trazar de qué caso de uso salió cada
    componente del agente.
 4. **Casos de uso relevados**: uno por fila, con la fuente de donde salió y un componente
    candidato tentativo (Instruction / Knowledge / Tool / Skill — sin comprometerse al diseño
-   final, esa clasificación definitiva la hace `copilot-studio-architect`).
+   final, esa clasificación definitiva la hace `behavior-spec-writer`).
 5. **Restricciones conocidas**, categorizadas — igual que en otras skills de Axxon, no como
    lista plana, porque `tools-and-connectors-catalog` y `publish-and-channels` filtran sobre
    esto después:
@@ -186,6 +192,7 @@ cerrarlas.
 
 ## Al finalizar
 
-Decile al usuario explícitamente qué sigue: normalmente `behavior-spec-writer`, para convertir
-los casos de uso relevados en la especificación de comportamiento detallada que
-`copilot-studio-architect` (de `mcs-assistant`) necesita como input.
+Decile al usuario explícitamente qué sigue: normalmente `behavior-spec-writer`, para clasificar
+los casos de uso relevados en Instructions/Knowledge/Tools/Skills y empezar a escribir el YAML
+real del agente (`settings.mcs.yml` y, según corresponda, los archivos bajo `capabilities/` y
+`behaviors/`).

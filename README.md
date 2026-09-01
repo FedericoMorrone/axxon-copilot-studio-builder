@@ -8,16 +8,8 @@ Es un plugin **independiente** del resto de la suite Axxon (`axxon-dataverse-arc
 
 - **Harness: GitHub Copilot** (modelo agentic-loop), no el standard harness clásico de Topics. Se eligió porque es donde Microsoft invierte el tooling nuevo (`pac copilot`, Foundry IQ, Fabric IQ, Work IQ) — ver `skills/agent-intake/SKILL.md` para el detalle de la decisión y sus trade-offs.
 - **Consecuencia directa**: en este harness no existen Topics determinísticos, variables globales/de Topic, Power Fx, ni **Adaptive Cards** (confirmado contra la documentación oficial — Adaptive Cards es una feature exclusiva del standard harness). Todo requerimiento se clasifica en cuatro cajones: **Instructions / Knowledge / Tools / Skills**.
-- **Generación de YAML delegada, no propia**: este plugin no reimplementa la lógica de clasificación ni el schema YAML del agente. Depende de **`mcs-assistant`** (repo [`microsoft/copilot-studio-plugin`](https://github.com/microsoft/copilot-studio-plugin)), el toolkit experimental del equipo Microsoft Copilot Studio CAT para ese harness. Las skills de Axxon preparan el input (casos de uso, fuentes, restricciones) que el `copilot-studio-architect` de `mcs-assistant` necesita para no inventar nada, y dejan el ALM/gobernanza encima.
-
-### Prerequisito de instalación
-
-```
-/plugin marketplace add microsoft/copilot-studio-plugin
-/plugin install mcs-assistant@copilot-studio-plugin
-```
-
-Sin `mcs-assistant` instalado, las skills de las etapas 2 a 5 (ver catálogo) no pueden generar YAML real — deben avisarlo explícitamente en vez de improvisar.
+- **Generación de YAML propia, no delegada.** Evaluamos depender de **`mcs-assistant`** (repo [`microsoft/copilot-studio-plugin`](https://github.com/microsoft/copilot-studio-plugin)), el toolkit experimental del equipo Microsoft Copilot Studio CAT para este harness, pero **su único flujo (`/migrate`) es de migración de un agente clásico existente al modelo nuevo** — no cubre construcción desde cero, que es nuestro caso de uso principal. Decisión: las skills de este plugin generan el YAML directamente, adaptando (con crédito, sin copiar literal) la metodología de clasificación de `copilot-studio-architect.md` de ese repo — el árbol de decisión Instructions/Knowledge/Tools/Skills y el schema de carpetas (`settings.mcs.yml`, `capabilities/knowledge/`, `capabilities/tools/`, `behaviors/`). La sincronización con Dataverse sigue siendo vía `pac copilot init/clone/pull/push`, que es independiente de `mcs-assistant`.
+- **`mcs-assistant` queda como dependencia opcional futura**, solo para el día en que un cliente pida migrar un bot clásico existente (fuera del alcance actual de este plugin).
 
 ## Catálogo de skills
 
@@ -25,11 +17,11 @@ Sin `mcs-assistant` instalado, las skills de las etapas 2 a 5 (ver catálogo) no
 |---|-------|---------|
 | 0 | `csb-orchestrator` | Punto de entrada. Detecta en qué etapa del ciclo está el pedido y delega. Mantiene `.cs-project.md`. |
 | 1 | `agent-intake` | Objetivo, audiencia, canal destino, casos de uso y fuentes de referencia (RFP, notas, transcripciones, matrices). Genera `.cs-project.md`. |
-| 2 | `behavior-spec-writer` | Convierte los casos de uso relevados en la "detailed behavior description" que exige `copilot-studio-architect` como input — no genera YAML, prepara el brief. *(pendiente)* |
-| 3 | `knowledge-source-catalog` | Releva SharePoint/Dataverse/archivos con clasificación FSI y se lo entrega al architect, que decide si es Knowledge o en realidad Tool+Skill. *(pendiente)* |
-| 4 | `tools-and-connectors-catalog` | Junta con el cliente los datos concretos (connector ID, operation ID, auth mode) que el architect exige completos antes de crear un Tool — conectores estándar/custom, Power Automate, MCP, IQ connectors. *(pendiente)* |
-| 5 | `skill-procedure-designer` | Identifica qué casos de uso son procedimiento reusable (Skill) vs. instrucción global vs. tool call directo, usando el mismo árbol de decisión del architect. *(pendiente)* |
-| 6 | `publish-and-channels` | Teams, Web, Omnichannel/D365 Contact Center, autenticación Entra ID — dispara `copilot-studio-manage` de mcs-assistant. *(pendiente)* |
+| 2 | `behavior-spec-writer` | Clasifica cada caso de uso en Instruction/Knowledge/Tool/Skill (metodología adaptada de `copilot-studio-architect.md`) y escribe `settings.mcs.yml` con las instructions. *(pendiente)* |
+| 3 | `knowledge-source-catalog` | Releva SharePoint/Dataverse/archivos con clasificación FSI y escribe los YAML bajo `capabilities/knowledge/`. *(pendiente)* |
+| 4 | `tools-and-connectors-catalog` | Junta con el cliente los datos concretos (connector ID, operation ID, auth mode) y escribe los YAML bajo `capabilities/tools/` — conectores estándar/custom, Power Automate, MCP, IQ connectors. *(pendiente)* |
+| 5 | `skill-procedure-designer` | Identifica qué casos de uso son procedimiento reusable (Skill) vs. instrucción global vs. tool call directo, y escribe los YAML bajo `behaviors/`. *(pendiente)* |
+| 6 | `publish-and-channels` | Teams, Web, Omnichannel/D365 Contact Center, autenticación Entra ID — vía `pac copilot push` + publicación de canal. *(pendiente)* |
 | 7 | `agent-alm` | Versionado de solución, promoción DEV→TEST→PROD con gate de aprobación, sobre `settings.mcs.yml`/`capabilities/`/`.mcs/`. *(pendiente)* |
 
 ## Convenciones
