@@ -1,7 +1,7 @@
 {
   "name": "axxon-copilot-studio-builder",
   "displayName": "Axxon Copilot Studio Builder",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "description": "Plugin de Axxon Consulting para el ciclo completo de construcción de Agentes en Microsoft Copilot Studio sobre el GitHub Copilot harness (modelo agentic-loop): intake de casos de uso, especificación de comportamiento, catálogo de Knowledge sources, catálogo de Tools/conectores/MCP/IQ, diseño de Skills, publicación en canales, y ALM. Genera el YAML del agente directamente (metodología de clasificación adaptada de microsoft/copilot-studio-plugin), sincronizando vía pac copilot init/clone/pull/push.",
   "author": "Axxon Consulting",
   "license": "Proprietary",
@@ -11,6 +11,8 @@
     "skills/behavior-spec-writer",
     "skills/knowledge-source-catalog",
     "skills/tools-and-connectors-catalog",
-    "skills/skill-procedure-designer"
+    "skills/skill-procedure-designer",
+    "skills/publish-and-channels",
+    "skills/agent-alm"
   ]
 }
